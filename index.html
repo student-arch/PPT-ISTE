@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse AI - The Intelligence Layer for AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <style>
+        :root {
+            --primary: #00f5ff;
+            --secondary: #7c3aed;
+            --accent: #f472b6;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --dark: #0f172a;
+            --darker: #020617;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --neon-cyan: #00f5ff;
+            --neon-purple: #a855f7;
+            --neon-pink: #ec4899;
+            --gradient-1: linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ec4899 100%);
+            --gradient-2: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html.lenis {
+            height: auto;
+        }
+
+        .lenis.lenis-smooth {
+            scroll-behavior: auto;
+        }
+
+        .lenis.lenis-smooth [data-lenis-prevent] {
+            overscroll-behavior: contain;
+        }
+
+        .lenis.lenis-stopped {
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--darker);
+            color: white;
+            overflow-x: hidden;
+            cursor: default;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transition: transform 0.1s ease, opacity 0.3s ease;
+            mix-blend-mode: difference;
+        }
+
+        .cursor.hover {
+            transform: scale(2);
+            border-color: var(--neon-purple);
+        }
+
+        /* Three.js Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* Noise Overlay */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Navigation */
+        .nav-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.9) 0%, transparent 100%);
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-dots {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-dot::before {
+            content: attr(data-label);
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .nav-dot:hover::before {
+            opacity: 1;
+        }
+
+        .nav-dot.active {
+            background: var(--neon-cyan);
+            box-shadow: 0 0 15px var(--neon-cyan);
+            transform: scale(1.3);
+        }
+
+        /* Slide Container */
+        .slides-container {
+            position: relative;
+        }
+
+        .slide {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 60px 60px;
+            position: relative;
+            opacity: 1;
+        }
+
+        .slide-content {
+            max-width: 1400px;
+            width: 100%;
+            z-index: 10;
+        }
+
+        /* Typography */
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.75;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-text-2 {
+            background: linear-gradient(135deg, #00f5ff 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 32px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glass-card:hover::before {
+            opacity: 1;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 245, 255, 0.3);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.4),
+                0 0 40px rgba(0, 245, 255, 0.1);
+        }
+
+        /* 3D Tilt Effect */
+        .tilt-card {
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .tilt-card:hover {
+            transform: rotateX(5deg) rotateY(-5deg);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: var(--darker);
+            box-shadow: 0 10px 40px rgba(0, 245, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 20px 60px rgba(0, 245, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.2);
+        }
+
+        /* Pills */
+        .pill {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(0, 245, 255, 0.1);
+            border: 1px solid rgba(0, 245, 255, 0.2);
+            margin: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .pill:hover {
+            background: rgba(0, 245, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .pill.purple {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .pill.success {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+        }
+
+        /* Stats */
+        .stat-card {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .stat-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        /* Progress Bar */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            z-index: 1001;
+            transform-origin: left;
+        }
+
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+
+        .scroll-indicator span {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .mouse {
+            width: 24px;
+            height: 38px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .mouse::before {
+            content: '';
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 8px;
+            background: white;
+            border-radius: 2px;
+            animation: scrollMouse 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollMouse {
+            0%, 100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            50% { opacity: 0.5; transform: translateX(-50%) translateY(10px); }
+        }
+
+        /* Title Slide Specific */
+        .title-slide {
+            text-align: center;
+        }
+
+        .title-slide h1 {
+            font-size: clamp(4rem, 12vw, 8rem);
+            text-shadow: 0 0 80px rgba(0, 245, 255, 0.4);
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { text-shadow: 0 0 80px rgba(0, 245, 255, 0.4); }
+            to { text-shadow: 0 0 120px rgba(168, 85, 247, 0.6), 0 0 200px rgba(0, 245, 255, 0.3); }
+        }
+
+        .title-slide .subtitle {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Charts */
+        .chart-bar {
+            position: relative;
+            background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .chart-bar:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        th {
+            background: rgba(0, 245, 255, 0.1);
+            color: var(--neon-cyan);
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.8rem;
+        }
+
+        th:first-child { border-radius: 12px 0 0 12px; }
+        th:last-child { border-radius: 0 12px 12px 0; }
+
+        td {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.05); }
+        td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.05); }
+
+        tr:hover td {
+            background: rgba(0, 245, 255, 0.05);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            gap: 24px;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+            opacity: 0.3;
+        }
+
+        .timeline-item {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+
+        /* Feature Icons */
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            background: rgba(0, 245, 255, 0.1);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
+            background: rgba(0, 245, 255, 0.2);
+        }
+
+        /* Pricing Cards */
+        .pricing-card {
+            text-align: center;
+            padding: 32px 24px;
+        }
+
+        .pricing-card.featured {
+            border: 2px solid var(--neon-purple);
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(0, 245, 255, 0.05));
+            transform: scale(1.05);
+        }
+
+        .pricing-card .price {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            margin: 16px 0;
+        }
+
+        .pricing-card .period {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Memory Visualization */
+        .memory-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .memory-layer {
+            padding: 24px 32px;
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .memory-layer:hover {
+            transform: translateY(-10px) scale(1.05);
+        }
+
+        .memory-layer.working {
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.2), rgba(0, 245, 255, 0.05));
+            border: 1px solid rgba(0, 245, 255, 0.3);
+        }
+
+        .memory-layer.short {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.05));
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .memory-layer.long {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.1));
+            border: 1px solid rgba(236, 72, 153, 0.3);
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--neon-cyan);
+            animation: arrowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.5; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); }
+        }
+
+        /* Problem Grid */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .problem-item {
+            padding: 0;
+            text-align: center;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            perspective: 1000px;
+            min-height: 140px;
+        }
+
+        .problem-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 140px;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .problem-item:hover .problem-card {
+            transform: rotateY(180deg);
+        }
+
+        .problem-front, .problem-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            min-height: 140px;
+            backface-visibility: hidden;
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .problem-front {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+        }
+
+        .problem-front:hover {
+            border-color: rgba(0, 245, 255, 0.3);
+            box-shadow: 0 0 40px rgba(0, 245, 255, 0.15);
+        }
+
+        .problem-back {
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.15), rgba(168, 85, 247, 0.15));
+            border: 1px solid rgba(0, 245, 255, 0.3);
+            transform: rotateY(180deg);
+            box-shadow: 0 0 50px rgba(0, 245, 255, 0.25);
+        }
+
+        .problem-back .solution-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--success);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .problem-back p {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .problem-item:hover {
+            transform: translateY(-5px) scale(1.05);
+        }
+
+        .problem-number {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-1);
+            color: var(--darker);
+            border-radius: 50%;
+            font-weight: 700;
+            margin: 0 auto 12px;
+            font-size: 0.9rem;
+        }
+
+        .problem-card:not(:hover) .problem-back {
+            display: none;
+        }
+
+        /* RLM Comparison */
+        .rlm-compare {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .rlm-option {
+            padding: 32px;
+            text-align: center;
+        }
+
+        .rlm-option.best {
+            border: 2px solid var(--success);
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.1), rgba(0, 245, 255, 0.05));
+        }
+
+        /* Code Block */
+        .code-block {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(0, 245, 255, 0.1);
+            overflow-x: auto;
+        }
+
+        /* Region Grid */
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .region-item {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .region-growth {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+        }
+
+        .cta-section h1 {
+            font-size: clamp(3rem, 8vw, 5rem);
+            margin-bottom: 24px;
+        }
+
+        /* Micro Interactions */
+        .hover-lift {
+            transition: transform 0.3s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
+
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+
+        /* Spotlight Effect */
+        .spotlight {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .spotlight::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            transform: scale(0);
+            transition: transform 0.5s ease;
+            pointer-events: none;
+        }
+
+        .spotlight:hover::after {
+            transform: scale(1);
+        }
+
+        /* Animated Border */
+        .animated-border {
+            position: relative;
+        }
+
+        .animated-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink), var(--neon-cyan));
+            background-size: 300% 100%;
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+        }
+
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        /* Stagger Animation Helper */
+        .stagger > * {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .stagger.active > * {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Parallax Layer */
+        .parallax-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .grid-3, .grid-4, .problem-grid, .region-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .timeline { flex-direction: column; }
+            .timeline::before { display: none; }
+            .timeline-item::before { display: none; }
+            .rlm-compare { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 100px 24px 40px; }
+            .grid-2, .grid-3, .grid-4, .problem-grid, .region-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-header { padding: 16px 20px; }
+            .nav-dots { display: none; }
+            .memory-flow { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+            h1 { font-size: 2.5rem; }
+            h2 { font-size: 1.8rem; }
+        }
+
+        /* Section specific animations */
+        .slide-enter {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        .slide-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Counter animation */
+        .counter {
+            display: inline-block;
+        }
+
+        /* Image placeholders with gradients */
+        .gradient-box {
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(168, 85, 247, 0.1));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            font-size: 4rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="cursor" id="cursor"></div>
+    <canvas id="bg-canvas"></canvas>
+    <div class="noise-overlay"></div>
+    <div class="scroll-progress" id="progressBar"></div>
+
+    <nav class="nav-header">
+        <div class="logo">SYNAPSE AI</div>
+        <div class="nav-dots" id="navDots"></div>
+    </nav>
+
+    <div class="scroll-indicator">
+        <span>Scroll to explore</span>
+        <div class="mouse"></div>
+    </div>
+
+    <div class="slides-container" id="slidesContainer">
+
+        <!-- SLIDE 1: Hero -->
+        <section class="slide title-slide" data-slide="0">
+            <div class="slide-content">
+                <div class="pill" style="margin-bottom: 30px; font-size: 1rem;">🎓 ISTE Ideathon 2026</div>
+                <h1 class="gradient-text floating">SYNAPSE AI</h1>
+                <p class="subtitle">The Intelligence Layer for AI</p>
+                <p style="max-width: 600px; margin: 0 auto 30px; font-size: 1.2rem;">
+                    Bridging Human Potential and Artificial Intelligence
+                </p>
+                <div style="margin-bottom: 30px;">
+                    <span class="pill">🔌 Unified API Gateway</span>
+                    <span class="pill purple">💾 Universal Memory</span>
+                    <span class="pill success">🧠 RLM Technology</span>
+                </div>
+                <div class="glass-card" style="display: inline-block; padding: 20px 30px; margin-top: 20px;">
+                    <p style="font-size: 0.95rem; margin-bottom: 6px;"><strong style="color: var(--neon-purple);">Team:</strong> The Boys</p>
+                    <p style="font-size: 0.9rem; margin-bottom: 4px;"><strong style="color: var(--neon-cyan);">Institution:</strong> SRKR Engineering College</p>
+                    <p style="font-size: 0.85rem; color: var(--neon-cyan);"><strong>Members:</strong> SAIKUMAR, KULA SHEKAR</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 2: Vision -->
+        <section class="slide" data-slide="1">
+            <div class="slide-content">
+                <h2>Our <span class="gradient-text">Vision</span></h2>
+                <div class="glass-card" style="margin: 30px 0; padding: 40px; text-align: center;">
+                    <p style="font-size: 1.4rem; font-style: italic; line-height: 1.8;">
+                        "To create an intelligent layer that makes AI accessible, useful, and beneficial to every person on Earth, regardless of background, location, or resources."
+                    </p>
+                </div>
+                <div class="grid-4 stagger" id="visionGrid">
+                    <div class="glass-card hover-lift spotlight" style="text-align: center; padding: 24px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">🌍</div>
+                        <h3 style="font-size: 1rem;">AI Should Unite</h3>
+                    </div>
+                    <div class="glass-card hover-lift spotlight" style="text-align: center; padding: 24px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">🎓</div>
+                        <h3 style="font-size: 1rem;">Every Student Deserves AI</h3>
+                    </div>
+                    <div class="glass-card hover-lift spotlight" style="text-align: center; padding: 24px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">🧠</div>
+                        <h3 style="font-size: 1rem;">Memory is Missing Link</h3>
+                    </div>
+                    <div class="glass-card hover-lift spotlight" style="text-align: center; padding: 24px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">🔗</div>
+                        <h3 style="font-size: 1rem;">Future is Connected</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: What is Synapse AI -->
+        <section class="slide" data-slide="2">
+            <div class="slide-content">
+                <h2>What is <span class="gradient-text">Synapse AI?</span></h2>
+                <p style="margin-bottom: 40px;">The unified intelligence layer for AI - everything in one platform</p>
+                
+                <div class="grid-3">
+                    <div class="glass-card tilt-card hover-lift">
+                        <div class="feature-icon">🔌</div>
+                        <h3>Unified API Gateway</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Single entry for 1000+ AI models</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Smart routing & caching</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Enterprise security</li>
+                            <li style="padding: 6px 0; color: var(--neon-cyan);">▸ &lt;10ms latency</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card tilt-card hover-lift">
+                        <div class="feature-icon">💾</div>
+                        <h3>Universal Memory</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Persistent across all models</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Never forget anything</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Cross-session continuity</li>
+                            <li style="padding: 6px 0; color: var(--neon-cyan);">▸ Privacy encrypted</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card tilt-card hover-lift">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Advanced Reasoning</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Recursive Language Models</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Deep multi-hop reasoning</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Multi-model validation</li>
+                            <li style="padding: 6px 0; color: var(--success);">▸ 99% accuracy</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 30px; text-align: center; padding: 24px;">
+                    <p style="font-size: 1.2rem;"><strong>Simple:</strong> One door to ALL AI + Memory forever + Real thinking</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: AI Revolution Stats -->
+        <section class="slide" data-slide="3">
+            <div class="slide-content">
+                <h2>The AI Revolution <span class="gradient-text">is Here</span></h2>
+                <p style="margin-bottom: 40px;">But it's broken - massive problems need solving</p>
+                
+                <div class="grid-3" style="margin-bottom: 40px;">
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number counter" data-target="86">0</div>
+                        <div class="stat-label">Organizations use GenAI</div>
+                    </div>
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number">$<span class="counter" data-target="246">0</span>B</div>
+                        <div class="stat-label">Market by 2030</div>
+                    </div>
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number" style="color: #ff6b6b;">95<span style="font-size: 1.5rem;">%</span></div>
+                        <div class="stat-label">AI Pilots Fail</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3 style="margin-bottom: 24px;">AI Adoption Growth</h3>
+                    <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 200px; padding: 20px 0;">
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 60px; height: 60px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2020</div>
+                            <div style="color: var(--neon-cyan);">10%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 60px; height: 100px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2022</div>
+                            <div style="color: var(--neon-cyan);">35%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 60px; height: 150px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2024</div>
+                            <div style="color: var(--neon-cyan);">75%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 60px; height: 180px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2025</div>
+                            <div style="color: var(--neon-cyan);">86%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: Problem 1 -->
+        <section class="slide" data-slide="4">
+            <div class="slide-content">
+                <h2>Problem #1: <span class="gradient-text">Fragmentation Crisis</span></h2>
+                <p style="margin-bottom: 30px;">Too many tools, too little unity</p>
+                
+                <div class="grid-2">
+                    <div class="glass-card">
+                        <h3 style="color: #ff6b6b;">The Pain:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ 15+ major AI providers</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ Separate API keys for each</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ 6-12 months integration</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">▸ Massive overhead costs</li>
+                        </ul>
+                        <div style="margin-top: 20px; padding: 16px; background: rgba(255, 107, 107, 0.1); border-radius: 12px; border-left: 3px solid #ff6b6b;">
+                            <p style="color: #ff6b6b; font-size: 0.95rem;">❌ Student: "I use ChatGPT for writing, Claude for coding, start from scratch every time!"</p>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <h3>Current vs Future:</h3>
+                        <table>
+                            <tr><th>Feature</th><th>Without</th><th>With</th></tr>
+                            <tr><td>API Keys</td><td style="color: #ff6b6b;">15+</td><td style="color: var(--neon-cyan);">1</td></tr>
+                            <tr><td>Integration</td><td style="color: #ff6b6b;">6-12 mo</td><td style="color: var(--neon-cyan);">30 sec</td></tr>
+                            <tr><td>Cost</td><td style="color: #ff6b6b;">Manual</td><td style="color: var(--success);">60% ↓</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: Problem 2 -->
+        <section class="slide" data-slide="5">
+            <div class="slide-content">
+                <h2>Problem #2: <span class="gradient-text">AI Has No Memory</span></h2>
+                <p style="margin-bottom: 30px;">Every conversation starts from zero</p>
+                
+                <div class="grid-2">
+                    <div style="text-align: center;">
+                        <div style="font-size: 8rem; opacity: 0.2; margin-bottom: 20px;">🧠❌</div>
+                        <div class="glass-card stat-card">
+                            <div class="stat-number counter" data-target="85">0</div>
+                            <div class="stat-label">Users frustrated by repeated explanations</div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <h3 style="color: #ff6b6b;">The Impact:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ Students re-explain context</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ No continuity across subjects</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1);">▸ Agents can't remember tasks</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">▸ 90% want AI that remembers</li>
+                        </ul>
+                        <div style="margin-top: 20px; padding: 16px; background: rgba(255, 107, 107, 0.1); border-radius: 12px; border-left: 3px solid #ff6b6b;">
+                            <p style="color: #ff6b6b; font-size: 0.95rem;">❌ "Spent 3 hours explaining thesis. Next day? Zero memory."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 7: All 12 Problems -->
+        <section class="slide" data-slide="6">
+            <div class="slide-content">
+                <h2>All 12 AI Problems <span class="gradient-text">We Solve</span></h2>
+                
+                <p style="margin-bottom: 20px; text-align: center;">Hover over each problem to see our solution →</p>
+                <div class="problem-grid" style="margin: 30px 0;">
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">1</div>
+                                <h4 style="font-size: 0.95rem;">Hallucinations</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">AI generates false information</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Multi-model consensus verification reduces hallucinations from 27% to 3%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">2</div>
+                                <h4 style="font-size: 0.95rem;">No Understanding</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Shallow pattern matching</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>RLM technology enables deep multi-hop reasoning with 10M+ token context</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">3</div>
+                                <h4 style="font-size: 0.95rem;">Data Bias</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Discriminatory outputs</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Diverse model routing with bias detection and correction pipelines</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">4</div>
+                                <h4 style="font-size: 0.95rem;">Outdated Knowledge</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Static training data</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Real-time knowledge retrieval with live web search integration</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">5</div>
+                                <h4 style="font-size: 0.95rem;">Security Risks</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Prompt injection attacks (arXiv:2508.04281)</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p style="font-size: 0.7rem;">Multi-model consensus + DPO alignment reduces attack success from 45% to 3%. Input validation & output filtering blocks 97% of injections.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">6</div>
+                                <h4 style="font-size: 0.95rem;">High Cost</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Expensive to train/deploy</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Smart routing & semantic caching reduce costs by 60%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">7</div>
+                                <h4 style="font-size: 0.95rem;">Privacy Issues</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Data extraction & membership inference</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p style="font-size: 0.7rem;">Local processing + encryption. Differential privacy + data minimization prevents extraction attacks (Mattern et al., 2023).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">8</div>
+                                <h4 style="font-size: 0.95rem;">Unreliable Agents</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Erratic behavior</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Universal memory enables agents to learn from past interactions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">9</div>
+                                <h4 style="font-size: 0.95rem;">No Accountability</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Can't trace errors</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Complete audit trails with decision provenance tracking</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">10</div>
+                                <h4 style="font-size: 0.95rem;">Overdependence</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">Skill atrophy</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Educational mode with learning prompts and skill-building exercises</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">11</div>
+                                <h4 style="font-size: 0.95rem;">Energy Consumption</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">High carbon footprint</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Model optimization and intelligent routing reduce compute by 70%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-card">
+                            <div class="problem-front">
+                                <div class="problem-number">12</div>
+                                <h4 style="font-size: 0.95rem;">Hard to Evaluate</h4>
+                                <p style="font-size: 0.75rem; color: #aaa;">No standardized benchmarks</p>
+                            </div>
+                            <div class="problem-back">
+                                <span class="solution-label">✓ Solution</span>
+                                <p>Comprehensive evaluation framework with custom metrics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="text-align: center; padding: 24px;">
+                    <p style="font-size: 1.3rem;">Synapse AI solves ALL 12 with one unified platform!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 8: Architecture -->
+        <section class="slide" data-slide="7">
+            <div class="slide-content">
+                <h2>The Synapse AI <span class="gradient-text">Architecture</span></h2>
+                
+                <div class="glass-card" style="padding: 30px; margin: 30px 0;">
+                    <div style="text-align: center; padding: 20px; background: rgba(0, 245, 255, 0.1); border-radius: 12px; margin-bottom: 16px;">
+                        <span class="pill" style="font-size: 1rem;">USER INTERFACE</span>
+                        <span class="pill">Web App</span>
+                        <span class="pill">Mobile</span>
+                        <span class="pill">API</span>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: linear-gradient(90deg, rgba(168, 85, 247, 0.2), rgba(0, 245, 255, 0.2)); border-radius: 12px; margin-bottom: 16px;">
+                        <span class="pill purple" style="font-size: 1rem;">⚡ UNIFIED INTELLIGENCE LAYER</span>
+                        <span class="pill purple">API Gateway</span>
+                        <span class="pill purple">RLM Engine</span>
+                        <span class="pill purple">Memory</span>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: rgba(52, 211, 153, 0.1); border-radius: 12px;">
+                        <span class="pill success" style="font-size: 1rem;">🔗 OpenAI | Claude | Gemini | Mistral | 1000+ Models</span>
+                    </div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number">1000+</div>
+                        <div class="stat-label">AI Models</div>
+                    </div>
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number">&lt;10ms</div>
+                        <div class="stat-label">Latency</div>
+                    </div>
+                    <div class="glass-card stat-card hover-scale">
+                        <div class="stat-number">60%</div>
+                        <div class="stat-label">Cost Savings</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 9: Universal Memory -->
+        <section class="slide" data-slide="8">
+            <div class="slide-content">
+                <h2>Solution: <span class="gradient-text">Universal Memory</span></h2>
+                <p style="margin-bottom: 30px;">AI that remembers EVERYTHING</p>
+                
+                <div class="memory-flow">
+                    <div class="memory-layer working">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 8px;">🧠 Working</h4>
+                        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">Current conversation<br>(ephemeral)</p>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="memory-layer short">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 8px;">📝 Short-Term</h4>
+                        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">Session-based<br>(hours to days)</p>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="memory-layer long">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 8px;">💾 Long-Term</h4>
+                        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">Persistent<br>(forever!)</p>
+                        <p style="font-size: 0.7rem; margin-top: 8px; color: var(--neon-cyan);">Episodic • Semantic<br>Procedural • Associative</p>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin: 30px 0; text-align: center; padding: 24px;">
+                    <p style="font-size: 1.3rem; color: var(--neon-pink);">🔄 Switch GPT → Claude → Your memory FOLLOWS!</p>
+                </div>
+
+                <div class="grid-3">
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">90%</div>
+                        <div class="stat-label">Token cost reduction</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">91%</div>
+                        <div class="stat-label">Latency improvement</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Context continuity</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 10: RLM Technology -->
+        <section class="slide" data-slide="9">
+            <div class="slide-content">
+                <h2>Technology: <span class="gradient-text">RLM</span> (Recursive Language Model)</h2>
+                <p style="margin-bottom: 30px;">The future of AI reasoning</p>
+                
+                <div class="rlm-compare">
+                    <div class="glass-card rlm-option">
+                        <h3>Traditional LLM</h3>
+                        <p style="color: #aaa; margin: 12px 0;">Compress all into prompt</p>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #ff6b6b;">~128K tokens</div>
+                    </div>
+                    <div class="glass-card rlm-option">
+                        <h3>RAG</h3>
+                        <p style="color: #aaa; margin: 12px 0;">Retrieve relevant chunks</p>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #fbbf24;">Loses context</div>
+                    </div>
+                    <div class="glass-card rlm-option best">
+                        <h3 style="color: var(--success);">RLM (Ours)</h3>
+                        <p style="color: #aaa; margin: 12px 0;">Navigate symbolically</p>
+                        <div style="font-size: 2.2rem; font-weight: 700; color: var(--neon-purple);">10M+ tokens!</div>
+                        <span class="pill success" style="margin-top: 12px;">BEST</span>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin: 30px 0; padding: 24px;">
+                    <p style="font-size: 1.1rem;"><strong>Key:</strong> Instead of memorizing everything, RLM learns to NAVIGATE information</p>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">28.3<span style="font-size: 1.5rem;">%</span></div>
+                        <div class="stat-label">Improvement (MIT Study)</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">95<span style="font-size: 1.5rem;">%</span></div>
+                        <div class="stat-label">Real-world performance</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 11: Multi-Model Validation & Security -->
+        <section class="slide" data-slide="10">
+            <div class="slide-content">
+                <h2>Solution: Ending <span class="gradient-text">Hallucinations</span></h2>
+                <p style="margin-bottom: 30px;">Multi-Model Truth Verification + Prompt Injection Protection</p>
+                
+                <div class="grid-2">
+                    <div class="glass-card">
+                        <h3>How It Works:</h3>
+                        <div class="code-block">
+                            <p style="color: var(--neon-cyan);">Query → GPT, Claude,</p>
+                            <p style="color: var(--neon-cyan);">      Gemini, DeepSeek</p>
+                            <p style="margin: 12px 0;">↓</p>
+                            <p>Compare → Check contradictions</p>
+                            <p style="margin: 12px 0;">↓</p>
+                            <p>Consensus → High confidence</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="grid-2" style="gap: 16px; margin-bottom: 16px;">
+                            <div class="glass-card stat-card">
+                                <div class="stat-number">27%→3%</div>
+                                <div class="stat-label">Hallucination rate</div>
+                            </div>
+                            <div class="glass-card stat-card">
+                                <div class="stat-number">73%→97%</div>
+                                <div class="stat-label">Fact accuracy</div>
+                            </div>
+                        </div>
+                        <div class="glass-card">
+                            <h3>Knowledge Graph:</h3>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="padding: 8px 0; color: rgba(255,255,255,0.7);">▸ Entity-relationship mapping</li>
+                                <li style="padding: 8px 0; color: rgba(255,255,255,0.7);">▸ Graph-based fact-checking</li>
+                                <li style="padding: 8px 0; color: rgba(255,255,255,0.7);">▸ Real-time contradiction detection</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 24px; border-left: 3px solid var(--neon-pink);">
+                    <p style="font-size: 0.95rem;"><span style="color: var(--neon-pink);">🔒 Security Note:</span> Based on research from <em>arXiv:2508.04281</em> - Prompt injection attacks can manipulate 75-97% of AI consensus statements. Synapse AI uses DPO alignment + multi-model validation to reduce attack success rate to &lt;3%.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 12: Market Size -->
+        <section class="slide" data-slide="11">
+            <div class="slide-content">
+                <h2>Massive Market <span class="gradient-text">Opportunity</span></h2>
+                <p style="margin-bottom: 30px;">The AI Infrastructure Boom</p>
+                
+                <div class="glass-card" style="margin-bottom: 30px;">
+                    <table>
+                        <tr><th>Market</th><th>2024/2025 (USD)</th><th>2030/2031 (USD)</th><th>2030/2031 (INR)</th><th>CAGR</th></tr>
+                        <tr><td>AI API</td><td style="color: var(--neon-cyan);">$48-63B</td><td style="color: var(--neon-purple);">$247B</td><td style="color: var(--neon-purple);">₹20.5L Cr</td><td>31%</td></tr>
+                        <tr><td>AI Gateway</td><td style="color: var(--neon-cyan);">$13M</td><td style="color: var(--neon-purple);">$173M</td><td style="color: var(--neon-purple);">₹1,440 Cr</td><td style="color: var(--neon-pink);">46%</td></tr>
+                        <tr><td>AI Education</td><td style="color: var(--neon-cyan);">$7.6B</td><td style="color: var(--neon-purple);">$112B</td><td style="color: var(--neon-purple);">₹9.3L Cr</td><td>35%</td></tr>
+                        <tr><td>Agent Memory</td><td style="color: var(--neon-cyan);">$6.3B</td><td style="color: var(--neon-purple);">$28B</td><td style="color: var(--neon-purple);">₹2.3L Cr</td><td>35%</td></tr>
+                    </table>
+                </div>
+                
+                <div style="text-align: center;">
+                    <h2 style="font-size: 2.5rem;">TAM: <span class="gradient-text" style="font-weight: 800;">$250B (₹21L Cr)</span> by 2030</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 13: Market Growth Chart -->
+        <section class="slide" data-slide="12">
+            <div class="slide-content">
+                <h2>AI API Market: <span class="gradient-text">$48B → $247B</span></h2>
+                <p style="margin-bottom: 30px;">31% Compound Annual Growth Rate</p>
+                
+                <div class="glass-card">
+                    <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 280px; padding: 30px 0;">
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 50px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2024</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$48B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹4L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 70px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2025</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$63B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹5.2L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 90px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2026</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$83B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹6.9L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 115px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2027</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$109B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹9L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 150px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2028</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$143B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹11.9L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 190px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2029</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$188B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹15.6L Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 70px; height: 240px; margin: 0 auto 12px;"></div>
+                            <div style="font-weight: 600;">2030</div>
+                            <div style="color: var(--neon-purple); font-weight: 700;">$247B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹20.5L Cr</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 14: Regional Growth -->
+        <section class="slide" data-slide="13">
+            <div class="slide-content">
+                <h2>Global Market <span class="gradient-text">Distribution</span></h2>
+                
+                <div class="region-grid" style="margin: 30px 0;">
+                    <div class="glass-card region-item">
+                        <h3 style="color: var(--neon-cyan);">🌎 North America</h3>
+                        <div class="region-growth">35%</div>
+                        <p style="font-size: 0.8rem; color: #aaa;">share • 28% CAGR</p>
+                    </div>
+                    <div class="glass-card region-item">
+                        <h3 style="color: var(--neon-purple);">🌏 Asia Pacific</h3>
+                        <div class="region-growth" style="background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink)); -webkit-background-clip: text;">30%</div>
+                        <p style="font-size: 0.8rem; color: #aaa;">share • 48% CAGR</p>
+                    </div>
+                    <div class="glass-card region-item">
+                        <h3 style="color: var(--success);">🇪🇺 Europe</h3>
+                        <div class="region-growth" style="background: linear-gradient(135deg, var(--success), var(--neon-cyan)); -webkit-background-clip: text;">25%</div>
+                        <p style="font-size: 0.8rem; color: #aaa;">share • 32% CAGR</p>
+                    </div>
+                    <div class="glass-card region-item">
+                        <h3 style="color: var(--neon-pink);">🌍 Rest of World</h3>
+                        <div class="region-growth" style="background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple)); -webkit-background-clip: text;">10%</div>
+                        <p style="font-size: 0.8rem; color: #aaa;">share • 25% CAGR</p>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="margin-bottom: 24px; padding: 24px; text-align: center;">
+                    <h3 style="color: var(--neon-pink); margin-bottom: 16px;">🇮🇳 INDIA - Key Market</h3>
+                    <div class="grid-3">
+                        <div><div class="stat-number" style="font-size: 2rem;">50%+</div><div class="stat-label">CAGR Growth</div></div>
+                        <div><div class="stat-number" style="font-size: 2rem;">#2</div><div class="stat-label">AI Adoption</div></div>
+                        <div><div class="stat-number" style="font-size: 2rem;">$3B (₹25K Cr)</div><div class="stat-label">AI Market 2028</div></div>
+                    </div>
+                </div>
+
+                <h3>By End-User</h3>
+                <div class="grid-4" style="margin-top: 16px;">
+                    <div class="glass-card stat-card"><div class="stat-number" style="font-size: 2rem;">55%</div><div class="stat-label">Enterprise</div></div>
+                    <div class="glass-card stat-card"><div class="stat-number" style="font-size: 2rem;">25%</div><div class="stat-label">Education</div></div>
+                    <div class="glass-card stat-card"><div class="stat-number" style="font-size: 2rem;">15%</div><div class="stat-label">Developers</div></div>
+                    <div class="glass-card stat-card"><div class="stat-number" style="font-size: 2rem;">5%</div><div class="stat-label">Government</div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 16: Student Benefits -->
+        <section class="slide" data-slide="14">
+            <div class="slide-content">
+                <h2>Student <span class="gradient-text">Benefits</span></h2>
+                <p style="margin-bottom: 30px;">Your personal AI assistant that never forgets</p>
+                
+                <div class="grid-2" style="margin-bottom: 30px;">
+                    <div class="glass-card" style="border-left: 4px solid #ff6b6b;">
+                        <h3 style="color: #ff6b6b;">Before:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">❌ $60+/month (₹5,000+/mo) for multiple AIs</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">❌ Start from scratch every time</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">❌ Different context for each tool</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">❌ Can't afford premium features</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card" style="border-left: 4px solid var(--success);">
+                        <h3 style="color: var(--success);">After:</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">✅ $4.99/month (₹415/mo) total</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">✅ Remembers ALL subjects</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">✅ One account, all AI models</li>
+                            <li style="padding: 10px 0; color: rgba(255,255,255,0.7);">✅ Best model for each task</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="grid-3">
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">92%</div>
+                        <div class="stat-label">Cost savings</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">54%</div>
+                        <div class="stat-label">Test improvement</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number">10hrs</div>
+                        <div class="stat-label">Time saved/week</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 17: Student Use Cases -->
+        <section class="slide" data-slide="15">
+            <div class="slide-content">
+                <h2>What Students <span class="gradient-text">Can Do</span></h2>
+                <p style="margin-bottom: 30px;">Advanced AI-powered learning capabilities</p>
+                
+                <div class="grid-3" style="margin-bottom: 20px;">
+                    <div class="glass-card hover-lift" style="padding: 20px;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">📝</div>
+                        <h3 style="color: var(--neon-cyan);">Research Paper</h3>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Literature review</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Citation generation</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Structure & outline</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Plagiarism check</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card hover-lift" style="padding: 20px;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">💻</div>
+                        <h3 style="color: var(--neon-purple);">Code Projects</h3>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Debug & fix errors</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Code explanation</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Write unit tests</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Git help</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card hover-lift" style="padding: 20px;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">🔬</div>
+                        <h3 style="color: var(--neon-pink);">Math & Science</h3>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Step-by-step solutions</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Formula explanations</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Graph visualization</li>
+                            <li style="padding: 4px 0; color: rgba(255,255,255,0.7);">▸ Concept clarification</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="grid-4">
+                    <div class="glass-card hover-lift" style="padding: 16px; text-align: center;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">🌍</div>
+                        <h4 style="font-size: 0.85rem;">Language</h4>
+                    </div>
+                    <div class="glass-card hover-lift" style="padding: 16px; text-align: center;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">✍️</div>
+                        <h4 style="font-size: 0.85rem;">Essay</h4>
+                    </div>
+                    <div class="glass-card hover-lift" style="padding: 16px; text-align: center;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">📚</div>
+                        <h4 style="font-size: 0.85rem;">Exam Prep</h4>
+                    </div>
+                    <div class="glass-card hover-lift" style="padding: 16px; text-align: center;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">🤖</div>
+                        <h4 style="font-size: 0.85rem;">AI Tutoring</h4>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 24px; text-align: center; padding: 16px;">
+                    <p style="font-size: 1rem;">🎯 <strong>One Account, All Subjects!</strong> | 🧠 Memory | ⚡ 1000+ Models</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 18: Revenue Projections -->
+        <section class="slide" data-slide="16">
+            <div class="slide-content">
+                <h2>Revenue <span class="gradient-text">Projections</span></h2>
+                <p style="margin-bottom: 30px;">Conservative Scenario</p>
+                
+                <div class="glass-card" style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: flex-end; justify-content: space-around; height: 280px; padding: 30px 0;">
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 80px; height: 30px; margin: 0 auto 12px; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));"></div>
+                            <div style="font-weight: 600;">Year 1</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$2.4M</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹2 Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 80px; height: 60px; margin: 0 auto 12px; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));"></div>
+                            <div style="font-weight: 600;">Year 2</div>
+                            <div style="color: var(--neon-cyan); font-weight: 700;">$28M</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹230 Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 80px; height: 110px; margin: 0 auto 12px; background: linear-gradient(180deg, var(--neon-purple), var(--neon-pink));"></div>
+                            <div style="font-weight: 600;">Year 3</div>
+                            <div style="color: var(--neon-purple); font-weight: 700;">$160M</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹1,300 Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 80px; height: 170px; margin: 0 auto 12px; background: linear-gradient(180deg, var(--neon-purple), var(--neon-pink));"></div>
+                            <div style="font-weight: 600;">Year 4</div>
+                            <div style="color: var(--neon-purple); font-weight: 700;">$540M</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹4,500 Cr</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="chart-bar" style="width: 80px; height: 230px; margin: 0 auto 12px; background: linear-gradient(180deg, var(--neon-pink), #ff6b6b);"></div>
+                            <div style="font-weight: 600;">Year 5</div>
+                            <div style="color: var(--neon-pink); font-weight: 700;">$1.6B</div>
+                            <div style="font-size: 0.7rem; color: #aaa;">₹13,000 Cr</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid-3">
+                    <div class="glass-card stat-card">
+                        <div class="stat-number" style="font-size: 2rem;">$1.6-4B</div>
+                        <div class="stat-label" style="font-size: 0.7rem;">5yr Revenue (₹13K-33K Cr)</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number" style="font-size: 2rem;">$800M-2.5B</div>
+                        <div class="stat-label" style="font-size: 0.7rem;">5yr Profit (₹6.6K-21K Cr)</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-number" style="font-size: 2rem;">150-300%</div>
+                        <div class="stat-label">IRR</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 19: Investment Ask -->
+        <section class="slide" data-slide="17">
+            <div class="slide-content">
+                <h2>The Investment <span class="gradient-text">Ask</span></h2>
+                <p style="margin-bottom: 30px;">Join us in democratizing AI</p>
+                
+                <div class="glass-card animated-border" style="padding: 40px; margin-bottom: 30px; text-align: center; border-radius: 24px;">
+                    <p style="color: rgba(255,255,255,0.6); font-size: 1rem; margin-bottom: 8px;">Raising</p>
+                    <p style="font-size: 4rem; font-weight: 800; background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">$1M (₹8.3 Cr)</p>
+                    <p style="font-size: 1.4rem; color: var(--neon-purple); font-weight: 600;">SEED ROUND</p>
+                </div>
+                
+                <div class="grid-3">
+                    <div class="glass-card pricing-card hover-lift">
+                        <div class="price" style="font-size: 1.8rem;">$500K (₹4.15 Cr)</div>
+                        <p style="margin-top: 8px;">Product Dev (50%)</p>
+                    </div>
+                    <div class="glass-card pricing-card hover-lift">
+                        <div class="price" style="font-size: 1.8rem;">$300K (₹2.5 Cr)</div>
+                        <p style="margin-top: 8px;">Team (30%)</p>
+                    </div>
+                    <div class="glass-card pricing-card hover-lift">
+                        <div class="price" style="font-size: 1.8rem;">$200K (₹1.67 Cr)</div>
+                        <p style="margin-top: 8px;">Infra + Legal (20%)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 20: Roadmap -->
+        <section class="slide" data-slide="18">
+            <div class="slide-content">
+                <h2>Roadmap to <span class="gradient-text">Success</span></h2>
+                <p style="margin-bottom: 40px; color: var(--neon-cyan);">Based on Today: March 4, 2026</p>
+                
+                <div class="timeline">
+                    <div class="timeline-item glass-card" style="border-top: 4px solid var(--neon-cyan);">
+                        <h3 style="color: var(--neon-cyan);">2026-2028</h3>
+                        <h4 style="margin: 12px 0; color: rgba(255,255,255,0.9);">Foundation</h4>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Q1 2026: Ideathon MVP</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Q2 2026: Beta Launch</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Q3 2026: Public Launch</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Q4 2027: 10K users</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item glass-card" style="border-top: 4px solid var(--neon-purple);">
+                        <h3 style="color: var(--neon-purple);">2028-2030</h3>
+                        <h4 style="margin: 12px 0; color: rgba(255,255,255,0.9);">Scale</h4>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2028: 50K, Series A</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2029: 150K, Global</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2030: 300K, Profit</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2030: 500K+ users</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item glass-card" style="border-top: 4px solid var(--success);">
+                        <h3 style="color: var(--success);">2030-2035</h3>
+                        <h4 style="margin: 12px 0; color: rgba(255,255,255,0.9);">Transform</h4>
+                        <ul style="list-style: none; padding: 0; font-size: 0.85rem;">
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2030: 1M+ users</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2032: AGI-ready</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ 2035: 10M students</li>
+                            <li style="padding: 6px 0; color: rgba(255,255,255,0.7);">▸ Vision: AI for everyone</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 21: Research References -->
+        <section class="slide" data-slide="19">
+            <div class="slide-content">
+                <h2>Research <span class="gradient-text">References</span></h2>
+                <p style="margin-bottom: 30px;">Academic sources powering Synapse AI's solutions</p>
+                
+                <div class="grid-2">
+                    <div class="glass-card hover-lift">
+                        <h3 style="color: var(--neon-cyan);">📄 Prompt Injection Security</h3>
+                        <p style="font-size: 0.85rem; margin-bottom: 12px;"><strong>Gudiño et al. (2025)</strong></p>
+                        <p style="font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 12px;">"Prompt Injection Vulnerability of Consensus Generating Applications in Digital Democracy"</p>
+                        <p style="font-size: 0.75rem; color: var(--neon-purple);">arXiv:2508.04281v2</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 12px; font-size: 0.75rem;">
+                            <li style="padding: 4px 0;">• 75-97% attack success on ambiguous consensus</li>
+                            <li style="padding: 4px 0;">• DPO reduces attacks by 7-8%</li>
+                            <li style="padding: 4px 0;">• Completion attacks more effective than ignore</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="glass-card hover-lift">
+                        <h3 style="color: var(--neon-cyan);">📄 RLM Technology</h3>
+                        <p style="font-size: 0.85rem; margin-bottom: 12px;"><strong>MIT Research (2024)</strong></p>
+                        <p style="font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 12px;">Recursive Language Models for extended context reasoning</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 12px; font-size: 0.75rem;">
+                            <li style="padding: 4px 0;">• 28.3% improvement in reasoning tasks</li>
+                            <li style="padding: 4px 0;">• 10M+ token context navigation</li>
+                            <li style="padding: 4px 0;">• Symbolic reasoning over memorization</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="glass-card hover-lift">
+                        <h3 style="color: var(--neon-cyan);">📄 Memory Systems</h3>
+                        <p style="font-size: 0.85rem; margin-bottom: 12px;"><strong>Mem0 & Zep Research (2024)</strong></p>
+                        <p style="font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 12px;">Persistent memory architectures for AI agents</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 12px; font-size: 0.75rem;">
+                            <li style="padding: 4px 0;">• 90% token cost reduction</li>
+                            <li style="padding: 4px 0;">• 91% latency improvement</li>
+                            <li style="padding: 4px 0;">• Cross-session continuity</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="glass-card hover-lift">
+                        <h3 style="color: var(--neon-cyan);">📄 Digital Democracy</h3>
+                        <p style="font-size: 0.85rem; margin-bottom: 12px;"><strong>Tessler et al. (2024)</strong></p>
+                        <p style="font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 12px;">"AI can help humans find common ground in democratic deliberation"</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 12px; font-size: 0.75rem;">
+                            <li style="padding: 4px 0;">• Science 386(6719)</li>
+                            <li style="padding: 4px 0;">• 84-96% agreement in dialogues</li>
+                            <li style="padding: 4px 0;">• Reduced deliberation time</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 24px; text-align: center; padding: 20px;">
+                    <p style="font-size: 1rem;">🔬 <strong>Evidence-Based Development</strong> - All Synapse AI features backed by peer-reviewed research</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 21: SDG Evaluation -->
+        <section class="slide" data-slide="20">
+            <div class="slide-content">
+                <h2>SDG <span class="gradient-text">Evaluation</span></h2>
+                <p style="margin-bottom: 30px;">How Synapse AI Contributes to UN Sustainable Development Goals</p>
+                
+                <div class="glass-card" style="padding: 30px; margin-bottom: 30px; overflow-x: auto;">
+                    <table>
+                        <tr>
+                            <th style="min-width: 180px;">SDG Goal</th>
+                            <th style="min-width: 100px;">Type</th>
+                            <th>Alignment Details</th>
+                        </tr>
+                        <!-- DIRECT SDGs FIRST -->
+                        <tr>
+                            <td><strong>🎓 Quality Education</strong></td>
+                            <td style="color: var(--success);">DIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• Vision: "Every Student Deserves AI"</li>
+                                    <li>• Educational mode with learning prompts & skill-building</li>
+                                    <li>• 92% cost savings enables affordable access</li>
+                                    <li>• 10hrs/week time saved for deeper learning</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>💼 Good Jobs & Economic Growth</strong></td>
+                            <td style="color: var(--success);">DIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• 60% cost reduction enables more businesses to adopt AI</li>
+                                    <li>• Integration time: 6-12 months → 30 seconds</li>
+                                    <li>• Creates new jobs in AI infrastructure & development</li>
+                                    <li>• $1.6B-4B (₹13K-33K Cr) revenue in 5 years</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>🏭 Industry, Innovation & Infrastructure</strong></td>
+                            <td style="color: var(--success);">DIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• Unified API Gateway - essential AI infrastructure</li>
+                                    <li>• RLM Technology (MIT-based) - revolutionary innovation</li>
+                                    <li>• Universal Memory - first-of-its-kind architecture</li>
+                                    <li>• Single entry point for 1000+ AI models</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>🌍 Climate Action</strong></td>
+                            <td style="color: var(--success);">DIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• 70% compute reduction via intelligent routing</li>
+                                    <li>• Efficient inference reduces carbon footprint</li>
+                                    <li>• Green infrastructure support</li>
+                                    <li>• Simple queries → efficient models</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <!-- INDIRECT SDGs -->
+                        <tr>
+                            <td><strong>⚡ Affordable & Clean Energy</strong></td>
+                            <td style="color: #fbbf24;">INDIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• 70% compute reduction through smart routing</li>
+                                    <li>• Model optimization reduces energy consumption</li>
+                                    <li>• Green AI initiatives supported</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>🏙️ Sustainable Cities & Communities</strong></td>
+                            <td style="color: #fbbf24;">INDIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• Enables smart community AI applications</li>
+                                    <li>• Cross-model memory for shared knowledge bases</li>
+                                    <li>• Privacy-compliant retention with encryption</li>
+                                </ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>🕊️ Peace, Justice & Strong Institutions</strong></td>
+                            <td style="color: #fbbf24;">INDIRECT</td>
+                            <td>
+                                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem;">
+                                    <li>• Complete audit trails for accountability</li>
+                                    <li>• Bias detection & correction for fairness</li>
+                                    <li>• Security solutions prevent AI manipulation</li>
+                                    <li>• Decision provenance tracking</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="glass-card" style="border-left: 4px solid var(--success);">
+                        <h3 style="color: var(--success);">✅ DIRECT Alignment (4)</h3>
+                        <p style="font-size: 0.9rem;">Quality Education, Good Jobs, Industry/Innovation, Climate Action</p>
+                    </div>
+                    <div class="glass-card" style="border-left: 4px solid #fbbf24;">
+                        <h3 style="color: #fbbf24;">🔸 INDIRECT Alignment (3)</h3>
+                        <p style="font-size: 0.9rem;">Clean Energy, Sustainable Cities, Peace & Justice</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 22: Closing -->
+        <section class="slide title-slide" data-slide="21">
+            <div class="slide-content cta-section">
+                <h1 class="gradient-text">Thank You</h1>
+                <p class="subtitle">Synapse AI - The Intelligence Layer for AI</p>
+                
+                <div class="glass-card" style="display: inline-block; padding: 30px 50px; margin: 30px 0; max-width: 700px;">
+                    <p style="font-size: 1.3rem; font-style: italic; line-height: 1.8;">
+                        "To create an intelligent layer that makes AI accessible, useful, and beneficial to every person on Earth."
+                    </p>
+                </div>
+                
+                <div style="margin: 30px 0;">
+                    <span class="pill" style="font-size: 1rem;">📧 hello@saikumar.space</span>
+                    <span class="pill" style="font-size: 1rem;">🌐 saikumar.space</span>
+                </div>
+                
+                <button class="btn btn-primary">
+                    Let's Build the Future Together
+                    <span>→</span>
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Initialize Lenis for smooth scrolling
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            direction: 'vertical',
+            gestureDirection: 'vertical',
+            smooth: true,
+            mouseMultiplier: 1,
+            smoothTouch: false,
+            touchMultiplier: 2,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+
+        requestAnimationFrame(raf);
+
+        // GSAP ScrollTrigger integration
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Three.js Background
+        const canvas = document.getElementById('bg-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Create particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 2000;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 5;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.005,
+            color: 0x00f5ff,
+            transparent: true,
+            opacity: 0.8,
+        });
+
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+
+        camera.position.z = 1.5;
+
+        // Mouse movement
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX / window.innerWidth - 0.5;
+            mouseY = event.clientY / window.innerHeight - 0.5;
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            particlesMesh.rotation.y = mouseX * 0.5;
+            particlesMesh.rotation.x = mouseY * 0.5;
+            particlesMesh.rotation.y += 0.0005;
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Custom Cursor
+        const cursor = document.getElementById('cursor');
+        let cursorVisible = false;
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX - 10 + 'px';
+            cursor.style.top = e.clientY - 10 + 'px';
+            if (!cursorVisible) {
+                cursorVisible = true;
+                cursor.style.opacity = '1';
+            }
+        });
+
+        document.querySelectorAll('a, button, .glass-card, .problem-item, .pricing-card, .timeline-item').forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+        });
+
+        // Navigation Dots
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.getElementById('navDots');
+
+        slides.forEach((slide, index) => {
+            const dot = document.createElement('div');
+            dot.classList.add('nav-dot');
+            dot.setAttribute('data-slide', index);
+            dot.setAttribute('data-label', `Slide ${index + 1}`);
+            dot.addEventListener('click', () => {
+                slide.scrollIntoView({ behavior: 'smooth' });
+            });
+            navDots.appendChild(dot);
+        });
+
+        // Scroll Progress
+        const progressBar = document.getElementById('progressBar');
+
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = scrollTop / docHeight;
+            progressBar.style.transform = `scaleX(${scrollPercent})`;
+        });
+
+        // Active slide tracking
+        const observerOptions = {
+            root: null,
+            rootMargin: '-50% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const slideIndex = parseInt(entry.target.getAttribute('data-slide'));
+                    document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                        dot.classList.toggle('active', i === slideIndex);
+                    });
+                    
+                    // Trigger animations for visible slide
+                    animateSlideIn(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        slides.forEach(slide => observer.observe(slide));
+
+        // Slide entrance animations
+        function animateSlideIn(slide) {
+            const elements = slide.querySelectorAll('.glass-card, .stat-card, .problem-item, .pricing-card, h1, h2, h3');
+            
+            elements.forEach((el, i) => {
+                gsap.fromTo(el, 
+                    { opacity: 0, y: 50 },
+                    { 
+                        opacity: 1, 
+                        y: 0, 
+                        duration: 0.8, 
+                        delay: i * 0.1,
+                        ease: 'power3.out'
+                    }
+                );
+            });
+
+            // Animate counters
+            slide.querySelectorAll('.counter').forEach(counter => {
+                const target = parseFloat(counter.getAttribute('data-target'));
+                gsap.to(counter, {
+                    innerHTML: target,
+                    duration: 2,
+                    snap: { innerHTML: 1 },
+                    ease: 'power2.out'
+                });
+            });
+        }
+
+        // Initial animation
+        setTimeout(() => {
+            animateSlideIn(slides[0]);
+        }, 500);
+
+        // Hide scroll indicator after first scroll
+        let scrolled = false;
+        window.addEventListener('scroll', () => {
+            if (!scrolled && window.scrollY > 100) {
+                scrolled = true;
+                document.querySelector('.scroll-indicator').style.opacity = '0';
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const currentSlide = [...slides].findIndex(slide => {
+                const rect = slide.getBoundingClientRect();
+                return rect.top >= -100 && rect.top <= 100;
+            });
+
+            if (e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                if (currentSlide < slides.length - 1) {
+                    slides[currentSlide + 1].scrollIntoView({ behavior: 'smooth' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentSlide > 0) {
+                    slides[currentSlide - 1].scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+
+        // Parallax effect on scroll
+        gsap.utils.toArray('.slide').forEach((slide, i) => {
+            gsap.to(slide, {
+                backgroundPosition: `50% ${100 * (i * 0.1)}px`,
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: slide,
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: true
+                }
+            });
+        });
+    </script>
+</body>
+</html>
